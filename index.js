@@ -22,10 +22,8 @@ app.get("/", (req, res) => {
 	res.sendFile(path.join(__dirname + "/index.html"));
 });
 
-bot.launch();
-
-// expressApp.use(bot.webhookCallback(webhookPath));
-// bot.telegram.setWebhook();
+app.use(bot.webhookCallback(webhookPath));
+bot.telegram.setWebhook(`${process.env.DEPLOY_URL}/${webhookPath}`);
 
 app.listen(port, () => console.log(`Listening on ${port}`));
 
