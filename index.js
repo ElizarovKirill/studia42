@@ -13,7 +13,7 @@ const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const port = process.env.PORT || 3000;
-const route = "/secret-path";
+const route = "/api/webhook";
 
 const exitKeyboard = Markup.keyboard(["exit"]).oneTime();
 const startKeyboard = Markup.keyboard(["/start"]).oneTime();
