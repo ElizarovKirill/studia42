@@ -13,6 +13,7 @@ const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const port = process.env.PORT || 3000;
+const route = "/secret-path";
 
 const exitKeyboard = Markup.keyboard(["exit"]).oneTime();
 const startKeyboard = Markup.keyboard(["/start"]).oneTime();
@@ -82,11 +83,16 @@ const findRumorFlow = new WizardScene(
 		const rumors = data.documents.map((user) => user.rumor);
 		const { name, surname } = ctx.scene.state;
 
-		await ctx.reply(`Rumors about ${name} ${surname}:`, removeKeyboard);
+		if (rumors.length) {
+			await ctx.reply(`Rumors about ${name} ${surname}:`, removeKeyboard);
 
-		rumors.forEach((rumor) => {
-			ctx.reply(`-${rumor}`);
-		});
+			rumors.forEach(async (rumor) => {
+				await ctx.reply(`-${rumor}`);
+			});
+		} else {
+			await ctx.reply(`There are no rumors about ${name} ${surname}.`);
+		}
+
 		ctx.reply(`Start again?`, startKeyboard);
 
 		return ctx.scene.leave();
@@ -171,12 +177,17 @@ app.get("/", (req, res) => {
 	res.sendFile(path.join(__dirname + "/index.html"));
 });
 
-// bot.telegram.setWebhook(`${process.env.WEBHOOK_URL}${route}`);
-// app.use(bot.webhookCallback(route));
+app.get("/secret-path", (req, res) => {
+	return bot.handleUpdate(req.body, res);
+});
+
 app.use(express.static("public"));
 app.use(express.json());
 
-bot.launch();
+bot.telegram.setWebhook(`${process.env.WEBHOOK_URL}${route}`);
+app.use(bot.webhookCallback(route));
+
+// bot.launch();
 
 app.listen(port, () => console.log(`Listening on ${port}`));
 
