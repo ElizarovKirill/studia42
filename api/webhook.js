@@ -174,11 +174,12 @@ bot.action("add_rumor", async (ctx) => {
 });
 
 app.get("/", (req, res) => {
-	res.sendFile(path.join(__dirname + "/index.html"));
+	res.send("Ok");
 });
 
 app.get("/secret-path", (req, res) => {
-	return bot.handleUpdate(req.body, res);
+	bot.handleUpdate(req.body, res);
+	res.send("Ok");
 });
 
 app.use(express.static("public"));
