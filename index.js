@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
-const path = require("path");
+
 const {
 	Telegraf,
 	session,
@@ -13,7 +13,7 @@ const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const port = process.env.PORT || 3000;
-const route = "/api/webhook";
+// const route = "/api/webhook";
 
 const exitKeyboard = Markup.keyboard(["exit"]).oneTime();
 const startKeyboard = Markup.keyboard(["/start"]).oneTime();
@@ -185,10 +185,10 @@ app.get("/secret-path", (req, res) => {
 app.use(express.static("public"));
 app.use(express.json());
 
-bot.telegram.setWebhook(`${process.env.WEBHOOK_URL}${route}`);
-app.use(bot.webhookCallback(route));
+// bot.telegram.setWebhook(`${process.env.WEBHOOK_URL}${route}`);
+// app.use(bot.webhookCallback(route));
 
-// bot.launch();
+bot.launch();
 
 app.listen(port, () => console.log(`Listening on ${port}`));
 
