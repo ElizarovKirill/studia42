@@ -14,6 +14,26 @@ const exitKeyboard = Markup.keyboard(["exit"]).oneTime();
 const startKeyboard = Markup.keyboard(["/start"]).oneTime();
 const removeKeyboard = Markup.removeKeyboard();
 
+const getRumorsKeyboard = (rumors, currentIndex) => {
+	const buttons = rumors.map((rumor, index) => {
+		if (index === currentIndex) {
+			return {
+				text: `-${index + 1}-`,
+				callback_data: `rumor_button_${index}`,
+			};
+		}
+
+		return {
+			text: index + 1,
+			callback_data: `rumor_button_${index}`,
+		};
+	});
+
+	return {
+		inline_keyboard: [buttons],
+	};
+};
+
 bot.command("start", async (ctx) => {
 	const inlineKeyboard = {
 		inline_keyboard: [
@@ -61,9 +81,9 @@ const findRumorFlow = new WizardScene(
 		const { data } = await axios.post(
 			`${process.env.API_URL}/action/find`,
 			{
-				dataSource: "Cluster0",
-				database: "Spletnik",
-				collection: "Rumor",
+				dataSource: process.env.DATA_SOURCE,
+				database: process.env.DATABASE,
+				collection: process.env.COLLECTION,
 				filter: ctx.scene.state,
 			},
 			{
@@ -79,16 +99,20 @@ const findRumorFlow = new WizardScene(
 		const { name, surname } = ctx.scene.state;
 
 		if (rumors.length) {
-			await ctx.reply(`Rumors about ${name} ${surname}:`, removeKeyboard);
+			await ctx.reply(`Rumors about ${name} ${surname}:`, startKeyboard);
 
-			rumors.forEach(async (rumor) => {
-				await ctx.reply(`- ${rumor}`);
-			});
+			await ctx
+				.reply(rumors[0], { reply_markup: getRumorsKeyboard(rumors, 0) })
+				.then((message) => {
+					ctx.session.rumors = rumors;
+					ctx.session.messageId = message.message_id;
+				});
 		} else {
-			await ctx.reply(`There are no rumors about ${name} ${surname}.`);
+			await ctx.reply(
+				`There are no rumors about ${name} ${surname}.`,
+				startKeyboard
+			);
 		}
-
-		await ctx.reply(`Start again?`, startKeyboard);
 
 		return ctx.scene.leave();
 	}
@@ -127,9 +151,9 @@ const addRumorFlow = new WizardScene(
 		await axios.post(
 			`${process.env.API_URL}/action/insertOne`,
 			{
-				dataSource: "Cluster0",
-				database: "Spletnik",
-				collection: "Rumor",
+				dataSource: process.env.DATA_SOURCE,
+				database: process.env.DATABASE,
+				collection: process.env.COLLECTION,
 				document: ctx.scene.state,
 			},
 			{
@@ -143,8 +167,7 @@ const addRumorFlow = new WizardScene(
 
 		const { name, surname } = ctx.scene.state;
 
-		await ctx.reply(`Rumor about ${name} ${surname} created!`);
-		await ctx.reply(`Start again?`, startKeyboard);
+		await ctx.reply(`Rumor about ${name} ${surname} created!`, startKeyboard);
 
 		return ctx.scene.leave();
 	}
@@ -160,15 +183,31 @@ stage.hears("exit", (ctx) => {
 bot.use(session());
 bot.use(stage.middleware());
 
-bot.action("find_rumor", async (ctx) => {
-	console.log("find_rumor");
-	ctx.scene.enter("findRumorFlow");
+bot.on("callback_query", (ctx) => {
+	const { data } = ctx.update.callback_query;
+
+	if (data === "find_rumor") {
+		ctx.scene.enter("findRumorFlow");
+	}
+
+	if (data === "add_rumor") {
+		ctx.scene.enter("addRumorFlow");
+	}
+
+	if (data.includes("rumor_button")) {
+		const { rumors, messageId } = ctx.session;
+
+		const splittedData = data.split("_");
+		const currentIndex = Number(splittedData[splittedData.length - 1]);
+
+		ctx.editMessageText(rumors[currentIndex], {
+			message_id: messageId,
+			reply_markup: getRumorsKeyboard(rumors, currentIndex),
+		});
+	}
 });
 
-bot.action("add_rumor", async (ctx) => {
-	console.log("add_rumor");
-	ctx.scene.enter("addRumorFlow");
-});
+bot.catch((err, ctx) => console.log(err));
 
 module.exports = async (request, response) => {
 	try {
