@@ -1,20 +1,41 @@
 process.env.NTBA_FIX_319 = "test";
+import dotenv from "dotenv";
 
-const axios = require("axios");
+import axios from "axios";
+import telegraf from "telegraf";
+dotenv.config();
 const {
 	Telegraf,
 	session,
 	Scenes: { WizardScene, Stage },
 	Markup,
-} = require("telegraf");
+} = telegraf;
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
+export const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const exitKeyboard = Markup.keyboard(["exit"]).oneTime();
 const startKeyboard = Markup.keyboard(["/start"]).oneTime();
 const removeKeyboard = Markup.removeKeyboard();
 
+const RUMORS_IN_MESSAGE = 3;
+const RUMOR_BUTTONS_IN_LINE = 3;
+
+const getChunks = (array, n) =>
+	array.reduce(
+		(memo, value, index) => {
+			if (index % n === 0 && index !== 0) memo.push([]);
+
+			memo[memo.length - 1].push(value);
+			return memo;
+		},
+		[[]]
+	);
+
 const getRumorsKeyboard = (rumors, currentIndex) => {
+	if (rumors.length <= 1) {
+		return {};
+	}
+
 	const buttons = rumors.map((rumor, index) => {
 		if (index === currentIndex) {
 			return {
@@ -30,7 +51,7 @@ const getRumorsKeyboard = (rumors, currentIndex) => {
 	});
 
 	return {
-		inline_keyboard: [buttons],
+		inline_keyboard: getChunks(buttons, RUMOR_BUTTONS_IN_LINE),
 	};
 };
 
@@ -95,11 +116,15 @@ const findRumorFlow = new WizardScene(
 			}
 		);
 
-		const rumors = data.documents.map((user) => user.rumor);
+		const rumorsText = data.documents.map((user) => user.rumor);
 		const { name, surname } = ctx.scene.state;
 
-		if (rumors.length) {
+		if (rumorsText.length) {
 			await ctx.reply(`Rumors about ${name} ${surname}:`, startKeyboard);
+
+			const rumors = getChunks(rumorsText, RUMORS_IN_MESSAGE).map((chunk) =>
+				chunk.map((rumor) => `- ${rumor}`).join("\n\n")
+			);
 
 			await ctx
 				.reply(rumors[0], { reply_markup: getRumorsKeyboard(rumors, 0) })
@@ -209,7 +234,7 @@ bot.on("callback_query", (ctx) => {
 
 bot.catch((err, ctx) => console.log(err));
 
-module.exports = async (request, response) => {
+export default async (request, response) => {
 	try {
 		const { body } = request;
 
