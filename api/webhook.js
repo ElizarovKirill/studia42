@@ -120,10 +120,10 @@ const findRumorFlow = new WizardScene(
 		const { name, surname } = ctx.scene.state;
 
 		if (rumorsText.length) {
-			await ctx.reply(`Rumors about ${name} ${surname}:`, startKeyboard);
-
 			const rumors = getChunks(rumorsText, RUMORS_IN_MESSAGE).map((chunk) =>
-				chunk.map((rumor) => `- ${rumor}`).join("\n\n")
+				chunk
+					.map((rumor) => `Многие говорят: ${name} ${surname} ${rumor}`)
+					.join("\n\n")
 			);
 
 			await ctx
