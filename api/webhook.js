@@ -13,8 +13,8 @@ const {
 
 export const bot = new Telegraf(process.env.BOT_TOKEN);
 
-const exitKeyboard = Markup.keyboard(["exit"]).oneTime();
-const startKeyboard = Markup.keyboard(["/start"]).oneTime();
+const exitKeyboard = Markup.keyboard(["exit"]).oneTime().resize();
+const startKeyboard = Markup.keyboard(["/start"]).oneTime().resize();
 const removeKeyboard = Markup.removeKeyboard();
 
 const RUMORS_IN_MESSAGE = 3;
@@ -70,9 +70,10 @@ bot.command("start", async (ctx) => {
 			],
 		],
 	};
-const welcomeMessage = `Привет, я Сплетник - бот для создания, поиска и распространения слухов (да-да, грязных - в том числе!).\nНиже две кнопки:\n\n1. «Найти слух»\nНажми, введи имя, фамилию и город того человека, про которого хочешь узнать слухи. Если там пусто - что же, либо этот человек святой, либо дико скучный.\n
-2. «Пустить слух»\nЯ знаю, тебе есть что рассказать!\nНажми, введи имя, фамилию, возраст и город того, о ком ты хочешь написать анонимные сплетни. Пусть все знают!\n
-Не забудь скинуть меня друзьям!\n@sspletnik_bot`;
+	const welcomeMessage = `Привет, я Сплетник - бот для создания, поиска и распространения слухов (да-да, грязных - в том числе!).	\nНиже две кнопки:\n\n1. «Найти слух»\nНажми, введи имя, фамилию и город того человека, про которого хочешь узнать слухи. Если там пусто - что же, либо этот человек святой, либо дико скучный.\n
+		2. «Пустить слух»\nЯ знаю, тебе есть что рассказать!\nНажми, введи имя, фамилию, возраст и город того, о ком ты хочешь написать анонимные сплетни. Пусть все знают!\n
+		Не забудь скинуть меня друзьям!\n@sspletnik_bot`;
+
 	bot.telegram.sendMessage(ctx.chat.id, welcomeMessage, {
 		reply_markup: inlineKeyboard,
 	});
@@ -86,7 +87,7 @@ const findRumorFlow = new WizardScene(
 
 		return ctx.wizard.next();
 	},
-	
+
 	async (ctx) => {
 		ctx.scene.state.surname = ctx.message.text;
 		await ctx.reply("Введите город:", exitKeyboard);
@@ -118,9 +119,7 @@ const findRumorFlow = new WizardScene(
 
 		if (rumorsText.length) {
 			const rumors = getChunks(rumorsText, RUMORS_IN_MESSAGE).map((chunk) =>
-				chunk
-					.map((rumor) => `Многие говорят: ${rumor}`)
-					.join("\n\n")
+				chunk.map((rumor) => `Многие говорят: ${rumor}`).join("\n\n")
 			);
 
 			await ctx
@@ -139,7 +138,9 @@ const findRumorFlow = new WizardScene(
 		return ctx.scene.leave();
 	}
 );
-findRumorFlow.enter((ctx) => ctx.reply("Введите имя (желательно - полное):", exitKeyboard));
+findRumorFlow.enter((ctx) =>
+	ctx.reply("Введите имя (желательно - полное):", exitKeyboard)
+);
 
 const addRumorFlow = new WizardScene(
 	"addRumorFlow",
@@ -163,7 +164,10 @@ const addRumorFlow = new WizardScene(
 	},
 	async (ctx) => {
 		ctx.scene.state.city = ctx.message.text;
-		await ctx.reply("Напишите, что вы знаете про этого человека?:", exitKeyboard);
+		await ctx.reply(
+			"Напишите, что вы знаете про этого человека?:",
+			exitKeyboard
+		);
 
 		return ctx.wizard.next();
 	},
@@ -194,7 +198,9 @@ const addRumorFlow = new WizardScene(
 		return ctx.scene.leave();
 	}
 );
-addRumorFlow.enter((ctx) => ctx.reply("Введите имя (желательно - полное):", exitKeyboard));
+addRumorFlow.enter((ctx) =>
+	ctx.reply("Введите имя (желательно - полное):", exitKeyboard)
+);
 
 const stage = new Stage([findRumorFlow, addRumorFlow]);
 stage.hears("exit", (ctx) => {
