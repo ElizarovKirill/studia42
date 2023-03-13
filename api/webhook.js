@@ -84,14 +84,9 @@ const findRumorFlow = new WizardScene(
 
 		return ctx.wizard.next();
 	},
+	
 	async (ctx) => {
 		ctx.scene.state.surname = ctx.message.text;
-		await ctx.reply("Enter persons age:", exitKeyboard);
-
-		return ctx.wizard.next();
-	},
-	async (ctx) => {
-		ctx.scene.state.age = Number(ctx.message.text);
 		await ctx.reply("Enter persons city:", exitKeyboard);
 
 		return ctx.wizard.next();
