@@ -1,9 +1,24 @@
 process.env.NTBA_FIX_319 = "test";
 import dotenv from "dotenv";
-
-import axios from "axios";
 import telegraf from "telegraf";
+
+import {
+	RUMORS_IN_MESSAGE,
+	RUMOR_BUTTON_KEY,
+	AGE_BUTTON_KEY,
+	CITY_BUTTON_KEY,
+} from "../utils/constants.js";
+import {
+	getChunks,
+	getRumorsKeyboard,
+	getCityKeyboard,
+	getAgeKeyboard,
+	parseButtonKey,
+} from "../utils/helpers.js";
+import { RumorService } from "../services/RumorService.js";
+
 dotenv.config();
+
 const {
 	Telegraf,
 	session,
@@ -16,44 +31,6 @@ export const bot = new Telegraf(process.env.BOT_TOKEN);
 const exitKeyboard = Markup.keyboard(["exit"]).oneTime().resize();
 const startKeyboard = Markup.keyboard(["/start"]).oneTime().resize();
 const removeKeyboard = Markup.removeKeyboard();
-
-const RUMORS_IN_MESSAGE = 3;
-const RUMOR_BUTTONS_IN_LINE = 3;
-
-const getChunks = (array, n) =>
-	array.reduce(
-		(memo, value, index) => {
-			if (index % n === 0 && index !== 0) memo.push([]);
-
-			memo[memo.length - 1].push(value);
-			return memo;
-		},
-		[[]]
-	);
-
-const getRumorsKeyboard = (rumors, currentIndex) => {
-	if (rumors.length <= 1) {
-		return {};
-	}
-
-	const buttons = rumors.map((rumor, index) => {
-		if (index === currentIndex) {
-			return {
-				text: `-${index + 1}-`,
-				callback_data: `rumor_button_${index}`,
-			};
-		}
-
-		return {
-			text: index + 1,
-			callback_data: `rumor_button_${index}`,
-		};
-	});
-
-	return {
-		inline_keyboard: getChunks(buttons, RUMOR_BUTTONS_IN_LINE),
-	};
-};
 
 bot.command("start", async (ctx) => {
 	const inlineKeyboard = {
@@ -70,7 +47,8 @@ bot.command("start", async (ctx) => {
 			],
 		],
 	};
-	const welcomeMessage = `Привет, я Сплетник - бот для создания, поиска и распространения слухов (да-да, грязных - в том числе!).	\nНиже две кнопки:\n\n1. «Найти слух»\nНажми, введи имя, фамилию и город того человека, про которого хочешь узнать слухи. Если там пусто - что же, либо этот человек святой, либо дико скучный.\n
+	const welcomeMessage = `Привет, я Сплетник - бот для создания, поиска и распространения слухов (да-да, грязных - в том числе!).	\nНиже две кнопки:\n\n
+		1. «Найти слух»\nНажми, введи имя, фамилию и город того человека, про которого хочешь узнать слухи. Если там пусто - что же, либо этот человек святой, либо дико скучный.\n
 		2. «Пустить слух»\nЯ знаю, тебе есть что рассказать!\nНажми, введи имя, фамилию, возраст и город того, о ком ты хочешь написать анонимные сплетни. Пусть все знают!\n
 		Не забудь скинуть меня друзьям!\n@sspletnik_bot`;
 
@@ -82,53 +60,22 @@ bot.command("start", async (ctx) => {
 const findRumorFlow = new WizardScene(
 	"findRumorFlow",
 	async (ctx) => {
-		ctx.scene.state.name = ctx.message.text;
+		ctx.session.current = {};
+		ctx.session.current.name = ctx.message.text;
 		await ctx.reply("Введите фамилию:", exitKeyboard);
 
 		return ctx.wizard.next();
 	},
-
 	async (ctx) => {
-		ctx.scene.state.surname = ctx.message.text;
-		await ctx.reply("Введите город:", exitKeyboard);
+		ctx.session.current.surname = ctx.message.text;
+		const cities = await RumorService.getCities(ctx.session.current);
 
-		return ctx.wizard.next();
-	},
-	async (ctx) => {
-		ctx.scene.state.city = ctx.message.text;
-
-		const { data } = await axios.post(
-			`${process.env.API_URL}/action/find`,
-			{
-				dataSource: process.env.DATA_SOURCE,
-				database: process.env.DATABASE,
-				collection: process.env.COLLECTION,
-				filter: ctx.scene.state,
-			},
-			{
-				headers: {
-					"Content-Type": "application/json",
-					"Access-Control-Request-Headers": "*",
-					"api-key": process.env.API_KEY,
-				},
-			}
-		);
-
-		const rumorsText = data.documents.map((user) => user.rumor);
-		const { name, surname } = ctx.scene.state;
-
-		if (rumorsText.length) {
-			const rumors = getChunks(rumorsText, RUMORS_IN_MESSAGE).map((chunk) =>
-				chunk.map((rumor) => `Многие говорят: ${rumor}`).join("\n\n")
-			);
-
-			await ctx
-				.reply(rumors[0], { reply_markup: getRumorsKeyboard(rumors, 0) })
-				.then((message) => {
-					ctx.session.rumors = rumors;
-					ctx.session.messageId = message.message_id;
-				});
+		if (cities.length) {
+			await ctx.reply(`Выберите город:`, {
+				reply_markup: getCityKeyboard(cities),
+			});
 		} else {
+			const { name, surname } = ctx.session.current;
 			await ctx.reply(
 				`Судя по всему, никто ничего не написал про ${name} ${surname}. Будьте первым!`,
 				startKeyboard
@@ -173,28 +120,11 @@ const addRumorFlow = new WizardScene(
 	},
 	async (ctx) => {
 		ctx.scene.state.rumor = ctx.message.text;
-
-		await axios.post(
-			`${process.env.API_URL}/action/insertOne`,
-			{
-				dataSource: process.env.DATA_SOURCE,
-				database: process.env.DATABASE,
-				collection: process.env.COLLECTION,
-				document: ctx.scene.state,
-			},
-			{
-				headers: {
-					"Content-Type": "application/json",
-					"Access-Control-Request-Headers": "*",
-					"api-key": process.env.API_KEY,
-				},
-			}
-		);
+		await RumorService.addRumor(ctx.scene.state);
 
 		const { name, surname } = ctx.scene.state;
 
 		await ctx.reply(`Слух про ${name} ${surname} добавлен!`, startKeyboard);
-
 		return ctx.scene.leave();
 	}
 );
@@ -211,7 +141,7 @@ stage.hears("exit", (ctx) => {
 bot.use(session());
 bot.use(stage.middleware());
 
-bot.on("callback_query", (ctx) => {
+bot.on("callback_query", async (ctx) => {
 	const { data } = ctx.update.callback_query;
 
 	if (data === "find_rumor") {
@@ -222,11 +152,34 @@ bot.on("callback_query", (ctx) => {
 		ctx.scene.enter("addRumorFlow");
 	}
 
-	if (data.includes("rumor_button")) {
-		const { rumors, messageId } = ctx.session;
+	if (data.includes(CITY_BUTTON_KEY)) {
+		ctx.session.current.city = parseButtonKey(data);
+		const ages = await RumorService.getAges(ctx.session.current);
 
-		const splittedData = data.split("_");
-		const currentIndex = Number(splittedData[splittedData.length - 1]);
+		await ctx.reply(`Выберите возраст:`, {
+			reply_markup: getAgeKeyboard(ages),
+		});
+	}
+
+	if (data.includes(AGE_BUTTON_KEY)) {
+		ctx.session.current.age = Number(parseButtonKey(data));
+		const rumorsText = await RumorService.getRumors(ctx.session.current);
+
+		const rumors = getChunks(rumorsText, RUMORS_IN_MESSAGE).map((chunk) =>
+			chunk.map((rumor) => `Многие говорят: ${rumor}`).join("\n\n")
+		);
+
+		await ctx
+			.reply(rumors[0], { reply_markup: getRumorsKeyboard(rumors, 0) })
+			.then((message) => {
+				ctx.session.rumors = rumors;
+				ctx.session.messageId = message.message_id;
+			});
+	}
+
+	if (data.includes(RUMOR_BUTTON_KEY)) {
+		const { rumors, messageId } = ctx.session;
+		const currentIndex = Number(parseButtonKey(data));
 
 		ctx.editMessageText(rumors[currentIndex], {
 			message_id: messageId,
