@@ -39,7 +39,18 @@ const removeKeyboard = Markup.removeKeyboard();
 let rumorService = null;
 let statisticsService = null;
 
+const connectServices = async () => {
+	const { database } = await DBService.connect();
+
+	rumorService = new RumorService(database);
+	statisticsService = new StatisticsService(database);
+};
+
 bot.command("start", async (ctx) => {
+	if (process.env.NODE_ENV === "development") {
+		connectServices();
+	}
+
 	const inlineKeyboard = {
 		inline_keyboard: [
 			[
@@ -222,11 +233,7 @@ export default async (request, response) => {
 		const { body } = request;
 
 		if (body.message || body.callback_query) {
-			const { database } = await DBService.connect();
-
-			rumorService = new RumorService(database);
-			statisticsService = new StatisticsService(database);
-
+			await connectServices();
 			await bot.handleUpdate(body);
 		}
 	} catch (error) {
