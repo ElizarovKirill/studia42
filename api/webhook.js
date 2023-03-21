@@ -7,6 +7,8 @@ import {
 	RUMOR_BUTTON_KEY,
 	AGE_BUTTON_KEY,
 	CITY_BUTTON_KEY,
+	ADD_RUMOR,
+	FIND_RUMOR,
 } from "../utils/constants.js";
 import {
 	getChunks,
@@ -16,6 +18,8 @@ import {
 	parseButtonKey,
 } from "../utils/helpers.js";
 import { RumorService } from "../services/RumorService.js";
+import { DBService } from "../services/DBService.js";
+import { StatisticsService } from "../services/StatisticsService.js";
 
 dotenv.config();
 
@@ -32,6 +36,9 @@ const exitKeyboard = Markup.keyboard(["exit"]).oneTime().resize();
 const startKeyboard = Markup.keyboard(["/start"]).oneTime().resize();
 const removeKeyboard = Markup.removeKeyboard();
 
+let rumorService = null;
+let statisticsService = null;
+
 bot.command("start", async (ctx) => {
 	const inlineKeyboard = {
 		inline_keyboard: [
@@ -47,6 +54,7 @@ bot.command("start", async (ctx) => {
 			],
 		],
 	};
+
 	const welcomeMessage = `Привет, я Сплетник - бот для создания, поиска и распространения слухов (да-да, грязных - в том числе!).	\nНиже две кнопки:\n\n
 		1. «Найти слух»\nНажми, введи имя, фамилию и город того человека, про которого хочешь узнать слухи. Если там пусто - что же, либо этот человек святой, либо дико скучный.\n
 		2. «Пустить слух»\nЯ знаю, тебе есть что рассказать!\nНажми, введи имя, фамилию, возраст и город того, о ком ты хочешь написать анонимные сплетни. Пусть все знают!\n
@@ -68,7 +76,7 @@ const findRumorFlow = new WizardScene(
 	},
 	async (ctx) => {
 		ctx.session.current.surname = ctx.message.text;
-		const cities = await RumorService.getCities(ctx.session.current);
+		const cities = await rumorService.getCities(ctx.session.current);
 
 		if (cities.length) {
 			await ctx.reply(`Выберите город:`, {
@@ -120,7 +128,16 @@ const addRumorFlow = new WizardScene(
 	},
 	async (ctx) => {
 		ctx.scene.state.rumor = ctx.message.text;
-		await RumorService.addRumor(ctx.scene.state);
+		await rumorService.addRumor(ctx.scene.state);
+
+		const { id: userId, username } = ctx.update.message.from;
+		const record = {
+			action: ADD_RUMOR,
+			userId,
+			username,
+		};
+
+		await statisticsService.createRecord(record);
 
 		const { name, surname } = ctx.scene.state;
 
@@ -154,7 +171,7 @@ bot.on("callback_query", async (ctx) => {
 
 	if (data.includes(CITY_BUTTON_KEY)) {
 		ctx.session.current.city = parseButtonKey(data);
-		const ages = await RumorService.getAges(ctx.session.current);
+		const ages = await rumorService.getAges(ctx.session.current);
 
 		await ctx.reply(`Выберите возраст:`, {
 			reply_markup: getAgeKeyboard(ages),
@@ -163,7 +180,17 @@ bot.on("callback_query", async (ctx) => {
 
 	if (data.includes(AGE_BUTTON_KEY)) {
 		ctx.session.current.age = Number(parseButtonKey(data));
-		const rumorsText = await RumorService.getRumors(ctx.session.current);
+		const rumorsText = await rumorService.getRumors(ctx.session.current);
+
+		const { id: userId, username } = ctx.update.callback_query.from;
+
+		const record = {
+			action: FIND_RUMOR,
+			userId,
+			username,
+		};
+
+		await statisticsService.createRecord(record);
 
 		const rumors = getChunks(rumorsText, RUMORS_IN_MESSAGE).map((chunk) =>
 			chunk.map((rumor) => `Многие говорят: ${rumor}`).join("\n\n")
@@ -195,6 +222,11 @@ export default async (request, response) => {
 		const { body } = request;
 
 		if (body.message || body.callback_query) {
+			const { database } = await DBService.connect();
+
+			rumorService = new RumorService(database);
+			statisticsService = new StatisticsService(database);
+
 			await bot.handleUpdate(body);
 		}
 	} catch (error) {
