@@ -139,13 +139,13 @@ const addRumorFlow = new WizardScene(
 	},
 	async (ctx) => {
 		ctx.scene.state.rumor = ctx.message.text;
-		await rumorService.addRumor(ctx.scene.state);
 
 		const { id: userId, username } = ctx.update.message.from;
 		const record = {
 			action: ADD_RUMOR,
 			userId,
 			username,
+			botName: ctx.me,
 		};
 
 		await statisticsService.createRecord(record);
@@ -199,6 +199,7 @@ bot.on("callback_query", async (ctx) => {
 			action: FIND_RUMOR,
 			userId,
 			username,
+			botName: ctx.me,
 		};
 
 		await statisticsService.createRecord(record);
