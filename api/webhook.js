@@ -118,6 +118,12 @@ const addRumorFlow = new WizardScene(
 	},
 	async (ctx) => {
 		ctx.scene.state.surname = ctx.message.text;
+		await ctx.reply("Введите ник в телеграмме если есть:", exitKeyboard);
+
+		return ctx.wizard.next();
+	},
+	async (ctx) => {
+		ctx.scene.state.username = ctx.message.text;
 		await ctx.reply("Введите возраст:", exitKeyboard);
 
 		return ctx.wizard.next();
@@ -139,6 +145,13 @@ const addRumorFlow = new WizardScene(
 	},
 	async (ctx) => {
 		ctx.scene.state.rumor = ctx.message.text;
+		const { username: targetUsername } = ctx.scene.state;
+
+		const targetUser = await statisticsService.getRecord(targetUsername);
+
+		if (targetUser) {
+			bot.telegram.sendMessage(ctx.chat.id, "О вас создали слух!");
+		}
 
 		const { id: userId, username } = ctx.update.message.from;
 		const record = {

@@ -14,4 +14,8 @@ export class StatisticsService {
 			createdAt: new Date(),
 		});
 	}
+
+	async getRecord(username) {
+		return await this.statisticsCollection.findOne({ username });
+	}
 }
