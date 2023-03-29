@@ -32,7 +32,8 @@ const {
 
 export const bot = new Telegraf(process.env.BOT_TOKEN);
 
-const exitKeyboard = Markup.keyboard(["exit"]).oneTime().resize();
+const exitKeyboard = Markup.keyboard(["/exit"]).oneTime().resize();
+const skipKeyboard = Markup.keyboard(["/skip", "/exit"]).oneTime().resize();
 const startKeyboard = Markup.keyboard(["/start"]).oneTime().resize();
 const removeKeyboard = Markup.removeKeyboard();
 
@@ -118,12 +119,15 @@ const addRumorFlow = new WizardScene(
 	},
 	async (ctx) => {
 		ctx.scene.state.surname = ctx.message.text;
-		await ctx.reply("Введите ник в телеграмме если есть:", exitKeyboard);
+		await ctx.reply("Введите ник в телеграмме если есть:", skipKeyboard);
 
 		return ctx.wizard.next();
 	},
 	async (ctx) => {
-		ctx.scene.state.username = ctx.message.text;
+		if (ctx.message.text !== "/skip") {
+			ctx.scene.state.username = ctx.message.text;
+		}
+
 		await ctx.reply("Введите возраст:", exitKeyboard);
 
 		return ctx.wizard.next();
@@ -145,12 +149,16 @@ const addRumorFlow = new WizardScene(
 	},
 	async (ctx) => {
 		ctx.scene.state.rumor = ctx.message.text;
+		await rumorService.addRumor(ctx.scene.state);
+
 		const { username: targetUsername } = ctx.scene.state;
 
-		const targetUser = await statisticsService.getRecord(targetUsername);
+		if (targetUsername !== "/skip") {
+			const targetUser = await statisticsService.getRecord(targetUsername);
 
-		if (targetUser) {
-			bot.telegram.sendMessage(ctx.chat.id, "О вас создали слух!");
+			if (targetUser) {
+				bot.telegram.sendMessage(ctx.chat.id, "О вас создали слух!");
+			}
 		}
 
 		const { id: userId, username } = ctx.update.message.from;
@@ -174,7 +182,7 @@ addRumorFlow.enter((ctx) =>
 );
 
 const stage = new Stage([findRumorFlow, addRumorFlow]);
-stage.hears("exit", (ctx) => {
+stage.hears("/exit", (ctx) => {
 	ctx.reply(`Начать заново?`, startKeyboard);
 	ctx.scene.leave();
 });
