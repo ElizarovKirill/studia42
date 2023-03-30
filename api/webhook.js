@@ -153,7 +153,7 @@ const addRumorFlow = new WizardScene(
 
 		const { username: targetUsername } = ctx.scene.state;
 
-		if (targetUsername !== "/skip") {
+		if (targetUsername && targetUsername !== "/skip") {
 			const targetUser = await statisticsService.getRecord(targetUsername);
 
 			if (targetUser) {
