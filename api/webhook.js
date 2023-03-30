@@ -157,7 +157,7 @@ const addRumorFlow = new WizardScene(
 			const targetUser = await statisticsService.getRecord(targetUsername);
 
 			if (targetUser) {
-				bot.telegram.sendMessage(ctx.chat.id, "О вас создали слух!");
+				bot.telegram.sendMessage(targetUsername, "О вас создали слух!");
 			}
 		}
 
