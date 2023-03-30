@@ -154,10 +154,10 @@ const addRumorFlow = new WizardScene(
 		const { username: targetUsername } = ctx.scene.state;
 
 		if (targetUsername && targetUsername !== "/skip") {
-			const targetUser = await statisticsService.getRecord(targetUsername);
+			const { userId } = await statisticsService.getRecord(targetUsername);
 
-			if (targetUser) {
-				bot.telegram.sendMessage(targetUsername, "О вас создали слух!");
+			if (userId) {
+				bot.telegram.sendMessage(userId, "О вас создали слух!");
 			}
 		}
 
