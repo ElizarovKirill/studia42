@@ -81,13 +81,13 @@ const findRumorFlow = new WizardScene(
 	"findRumorFlow",
 	async (ctx) => {
 		ctx.session.current = {};
-		ctx.session.current.name = ctx.message.text;
+		ctx.session.current.name = ctx.message.text.toLowerCase();
 		await ctx.reply("Введите фамилию:", exitKeyboard);
 
 		return ctx.wizard.next();
 	},
 	async (ctx) => {
-		ctx.session.current.surname = ctx.message.text;
+		ctx.session.current.surname = ctx.message.text.toLowerCase();
 		const cities = await rumorService.getCities(ctx.session.current);
 
 		if (cities.length) {
@@ -112,13 +112,13 @@ findRumorFlow.enter((ctx) =>
 const addRumorFlow = new WizardScene(
 	"addRumorFlow",
 	async (ctx) => {
-		ctx.scene.state.name = ctx.message.text;
+		ctx.scene.state.name = ctx.message.text.toLowerCase();
 		await ctx.reply("Введите фамилию:", exitKeyboard);
 
 		return ctx.wizard.next();
 	},
 	async (ctx) => {
-		ctx.scene.state.surname = ctx.message.text;
+		ctx.scene.state.surname = ctx.message.text.toLowerCase();
 		await ctx.reply("Введите ник в телеграмме если есть:", skipKeyboard);
 
 		return ctx.wizard.next();
@@ -139,7 +139,7 @@ const addRumorFlow = new WizardScene(
 		return ctx.wizard.next();
 	},
 	async (ctx) => {
-		ctx.scene.state.city = ctx.message.text;
+		ctx.scene.state.city = ctx.message.text.toLowerCase();
 		await ctx.reply(
 			"Напишите, что вы знаете про этого человека?:",
 			exitKeyboard
@@ -154,10 +154,10 @@ const addRumorFlow = new WizardScene(
 		const { username: targetUsername } = ctx.scene.state;
 
 		if (targetUsername && targetUsername !== "/skip") {
-			const { userId } = await statisticsService.getRecord(targetUsername);
+			const user = await statisticsService.getRecord(targetUsername);
 
-			if (userId) {
-				bot.telegram.sendMessage(userId, "О вас создали слух!");
+			if (user) {
+				bot.telegram.sendMessage(user.userId, "О вас создали слух!");
 			}
 		}
 
@@ -202,7 +202,7 @@ bot.on("callback_query", async (ctx) => {
 	}
 
 	if (data.includes(CITY_BUTTON_KEY)) {
-		ctx.session.current.city = parseButtonKey(data);
+		ctx.session.current.city = parseButtonKey(data).toLowerCase();
 		const ages = await rumorService.getAges(ctx.session.current);
 
 		await ctx.reply(`Выберите возраст:`, {
