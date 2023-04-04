@@ -99,7 +99,7 @@ const findRumorFlow = new WizardScene(
 
 			const { id: userId, username } = ctx.update.message.from;
 			const record = {
-				action: ADD_RUMOR,
+				action: FIND_RUMOR,
 				userId,
 				username,
 				botName: ctx.me,
