@@ -96,6 +96,17 @@ const findRumorFlow = new WizardScene(
 			});
 		} else {
 			const { name, surname } = ctx.session.current;
+
+			const { id: userId, username } = ctx.update.message.from;
+			const record = {
+				action: ADD_RUMOR,
+				userId,
+				username,
+				botName: ctx.me,
+			};
+
+			await statisticsService.createRecord(record);
+
 			await ctx.reply(
 				`Судя по всему, никто ничего не написал про ${name} ${surname}. Будьте первым!`,
 				startKeyboard
