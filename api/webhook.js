@@ -154,11 +154,21 @@ topic2Scene.enter(async (ctx) =>{
 const topic3Scene = new WizardScene(
     "topic3",
     async (ctx) => {
+        const consultation = ctx.message.text;
+
+        const {topic, companyName, product} = ctx.session;
+        const managerMessage = `Тема: ${topicMap[topic]}\n\nКомпания: ${companyName}\n\nПлатформа: ${productMap[product]}\n\nЗапрос: ${consultation}\n\nПользователь: ${ctx.message.from.username}`;
+
+        await bot.telegram.sendMessage(MANAGER_ID, managerMessage, {
+            reply_markup: startKeyboard,
+        });
+
+        await ctx.reply('Спасибо за обращение. Ваш запрос передан руководству, мы найдем подходящего эксперта по вашему вопросу. С вами свяжутся в течении 2-х рабочих часов. Рабочие дни пн-пт с 07:00 до 16:00 (МСК)', startKeyboard);
         return ctx.scene.leave();
     }
 );
 topic3Scene.enter(async (ctx) =>{
-    await ctx.reply("topic3", exitKeyboard)
+    await ctx.reply("Опишите подробно ваш вопрос по поводу которого вы бы хотели получить совет\\консультацию.", exitKeyboard)
 });
 
 const topic4Scene = new WizardScene(
