@@ -21,10 +21,12 @@ const startKeyboard = Markup.keyboard(["/start"]).oneTime().resize();
 
 const BUTTONS_IN_LINE = 1;
 
-const troubleProductMap = {
-    troubleProduct_1: 'Мобильное приложение',
-    troubleProduct_2: 'Сайт',
-    troubleProduct_3: 'Симулятор'
+const MANAGER_ID = process.env.MANAGER_ID;
+
+const productMap = {
+    product_1: 'Мобильное приложение',
+    product_2: 'Сайт',
+    product_3: 'Симулятор'
 }
 
 const topicMap = {
@@ -35,21 +37,21 @@ const topicMap = {
     topic_5: 'Хочу оставить жалобу'
 }
 
-const troubleProduct = [
+const productButtons = [
     {
         text: "Мобильное приложение",
-        callback_data: "troubleProduct_1",
+        callback_data: "product_1",
     },
     {
         text: "Сайт",
-        callback_data: "troubleProduct_2",
+        callback_data: "product_2",
     },
     {
         text: "Симулятор",
-        callback_data: "troubleProduct_3",
+        callback_data: "product_3",
     }
 ]
-const topics = [
+const topicButtons = [
     {
         text: "Не работает сайт или приложение",
         callback_data: "topic_1",
@@ -87,7 +89,7 @@ bot.command("start", async (ctx) => {
     }
 
     const markup = {
-        inline_keyboard: getChunks(topics, BUTTONS_IN_LINE)
+        inline_keyboard: getChunks(topicButtons, BUTTONS_IN_LINE)
     };
 
     bot.telegram.sendMessage(ctx.chat.id, welcomeMessage, {
@@ -110,46 +112,86 @@ const websiteTroubleScene = new WizardScene(
 
         const managerMessage = `${topicMap[topic]}\n ${url}`;
 
-        await bot.telegram.sendMessage(697255251, managerMessage, {
+        await bot.telegram.sendMessage(MANAGER_ID, managerMessage, {
             reply_markup: startKeyboard,
         });
 
-        await bot.telegram.forwardMessage(697255251, ctx.message.chat.id, messageId);
+        await bot.telegram.forwardMessage(MANAGER_ID, ctx.message.chat.id, messageId);
         await ctx.reply('Мы обязательно вам поможем в максимально короткие сроки.', startKeyboard);
         return ctx.scene.leave();
     }
 );
-websiteTroubleScene.enter((ctx) => {
-    ctx.reply("Пожалуйста укажите ссылку на продукт ", exitKeyboard)
+websiteTroubleScene.enter(async (ctx) => {
+    await ctx.reply("Пожалуйста укажите ссылку на продукт ", exitKeyboard)
 });
 
-const flow = new WizardScene(
-    "flow",
+const mainScene = new WizardScene(
+    "main",
     async (ctx) => {
-        ctx.scene.state.name = ctx.message.text.toLowerCase();
-        await ctx.reply("Вопрос 2: ", exitKeyboard);
-
-        return ctx.wizard.next();
-    },
-    async (ctx) => {
-        ctx.scene.state.surname = ctx.message.text.toLowerCase();
-        const { name, surname } = ctx.scene.state;
-        const { topic, troubleProduct} = ctx.session;
-        const managerMessage = `${troubleProductMap[troubleProduct]}\n ${topicMap[topic]}\n ${name} ${surname}`;
-
-        bot.telegram.sendMessage(697255251, managerMessage, {
-            reply_markup: startKeyboard,
+        ctx.session.companyName = ctx.message.text;
+        ctx.reply('Укажите по какому продукту вам нужна консультация', {
+            reply_markup: {
+                inline_keyboard: getChunks(productButtons, 1),
+            }
         });
+        ctx.scene.leave();
+    }
+);
+mainScene.enter(async (ctx) => {
+    await ctx.reply('Пожалуйста напишите от имени какой компании вы обращаетесь', exitKeyboard);
+});
 
+const topic2Scene = new WizardScene(
+    "topic2",
+    async (ctx) => {
         return ctx.scene.leave();
     }
 );
-
-flow.enter((ctx) => {
-    ctx.reply("Пожалуйста напишите от имени какой компании вы обращаетесь ", exitKeyboard)
+topic2Scene.enter(async (ctx) =>{
+    await ctx.reply("topic2", exitKeyboard)
 });
 
-const stage = new Stage([flow, websiteTroubleScene]);
+const topic3Scene = new WizardScene(
+    "topic3",
+    async (ctx) => {
+        return ctx.scene.leave();
+    }
+);
+topic3Scene.enter(async (ctx) =>{
+    await ctx.reply("topic3", exitKeyboard)
+});
+
+const topic4Scene = new WizardScene(
+    "topic4",
+    async (ctx) => {
+        return ctx.scene.leave();
+    }
+);
+topic4Scene.enter(async (ctx) =>{
+    await ctx.reply("topic4", exitKeyboard)
+});
+
+const topic5Scene = new WizardScene(
+    "topic5",
+    async (ctx) => {
+        const complaint = ctx.message.text;
+
+        const {topic, companyName, product} = ctx.session;
+        const managerMessage = `Тема: ${topicMap[topic]}\n\nКомпания: ${companyName}\n\nПлатформа: ${productMap[product]}\n\nЖалоба: ${complaint}`;
+
+        await bot.telegram.sendMessage(MANAGER_ID, managerMessage, {
+            reply_markup: startKeyboard,
+        });
+
+        await ctx.reply('Мы обязательно вам поможем в максимально короткие сроки.', startKeyboard);
+        return ctx.scene.leave();
+    }
+);
+topic5Scene.enter(async (ctx) =>{
+    await ctx.reply("Давайте представим, что я ваш личный психолог. Расскажите пожалуйста суть вашей жалобы.", exitKeyboard)
+});
+
+const stage = new Stage([websiteTroubleScene, mainScene, topic2Scene, topic3Scene, topic4Scene, topic5Scene]);
 stage.hears("/exit", (ctx) => {
     ctx.reply(`Начать заново?`, startKeyboard);
     ctx.scene.leave();
@@ -161,13 +203,25 @@ bot.use(stage.middleware());
 bot.on("callback_query", async (ctx) => {
     const { data } = ctx.update.callback_query;
 
-    if (data.includes('troubleProduct')) {
-        ctx.session.troubleProduct = data;
-        ctx.reply("Выберите причину вашего обращения: ", {
-            reply_markup: {
-                inline_keyboard: getChunks(topics, BUTTONS_IN_LINE)
-            }
-        })
+    if (data.includes('product')) {
+        ctx.session.product = data;
+        const { topic } = ctx.session;
+
+        if (topic === 'topic_2') {
+            ctx.scene.enter('topic2');
+        }
+
+        if (topic === 'topic_3') {
+            ctx.scene.enter('topic3');
+        }
+
+        if (topic === 'topic_4') {
+            ctx.scene.enter('topic4');
+        }
+
+        if (topic === 'topic_5') {
+            ctx.scene.enter('topic5');
+        }
     }
 
     if (data == "topic_1") {
@@ -175,7 +229,7 @@ bot.on("callback_query", async (ctx) => {
         ctx.scene.enter('websiteTrouble')
     }else if (data.includes('topic')) {
         ctx.session.topic = data;
-        ctx.scene.enter('flow');
+        ctx.scene.enter('main');
     }
 });
 
