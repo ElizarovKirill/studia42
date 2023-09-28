@@ -37,6 +37,15 @@ const topicMap = {
     topic_5: 'Хочу оставить жалобу'
 }
 
+const deadlinesMap = {
+    deadline_1: '1-2 дня.',
+    deadline_2: 'В течение недели.',
+    deadline_3: 'В течение двух недель.',
+    deadline_4: 'В течение месяца.',
+    deadline_5: 'От 3-4 месяцев.',
+    deadline_6: 'До 6 месяцев.'
+}
+
 const productButtons = [
     {
         text: "Мобильное приложение",
@@ -71,6 +80,32 @@ const topicButtons = [
     {
         text: "Хочу оставить жалобу",
         callback_data: "topic_5",
+    }
+]
+const deadlineButtons = [
+    {
+        text: '1-2 дня',
+        callback_data: 'deadline_1'
+    },
+    {
+        text: 'В течение недели',
+        callback_data: 'deadline_2'
+    },
+    {
+        text: 'В течение двух недель',
+        callback_data: 'deadline_3'
+    },
+    {
+        text: 'В течение месяца',
+        callback_data: 'deadline_4'
+    },
+    {
+        text: 'От 3-4 месяцев',
+        callback_data: 'deadline_5'
+    },
+    {
+        text: 'До 6 месяцев',
+        callback_data: 'deadline_6'
     }
 ]
 
@@ -174,11 +209,18 @@ topic3Scene.enter(async (ctx) =>{
 const topic4Scene = new WizardScene(
     "topic4",
     async (ctx) => {
+        ctx.session.task = ctx.message.text;
+
+        await ctx.reply('Укажите желаемые для вас сроки выполнения:', {
+            reply_markup: {
+                inline_keyboard: getChunks(deadlineButtons, 1)
+            }
+        })
         return ctx.scene.leave();
     }
 );
 topic4Scene.enter(async (ctx) =>{
-    await ctx.reply("topic4", exitKeyboard)
+    await ctx.reply("Расскажите подробно о вашей задаче", exitKeyboard)
 });
 
 const topic5Scene = new WizardScene(
@@ -240,6 +282,17 @@ bot.on("callback_query", async (ctx) => {
     }else if (data.includes('topic')) {
         ctx.session.topic = data;
         ctx.scene.enter('main');
+    }
+
+    if (data.includes('deadline')) {
+        const {topic, companyName, product, task} = ctx.session;
+        const managerMessage = `Тема: ${topicMap[topic]}\n\nКомпания: ${companyName}\n\nПлатформа: ${productMap[product]}\n\nЗадача: ${task}\n\nСроки: ${deadlinesMap[data]}`;
+
+        await bot.telegram.sendMessage(MANAGER_ID, managerMessage, {
+            reply_markup: startKeyboard,
+        });
+
+        await ctx.reply('Спасибо за обращение. Ваш запрос передан менеджеру, с вами свяжутся в максимально короткие сроки.', startKeyboard);
     }
 });
 
