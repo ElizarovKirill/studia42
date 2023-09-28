@@ -1,3 +1,5 @@
 /node_modules
 .env
 .vercel
+/api/webhook2
+/api/webhookmain
