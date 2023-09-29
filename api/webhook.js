@@ -29,6 +29,10 @@ const productMap = {
     product_3: 'Симулятор'
 }
 
+const managerMap = {
+    ptm: 12454,
+}
+
 const topicMap = {
     topic_1: 'Не работает сайт или приложение',
     topic_2: 'Возникла проблема или ошибка в приложении',
@@ -45,6 +49,58 @@ const deadlinesMap = {
     deadline_5: 'От 3-4 месяцев.',
     deadline_6: 'До 6 месяцев.'
 }
+
+const browsersMap = {
+    browser_yandex: 'Yandex',
+    browser_safari: 'Safari',
+    browser_chrome: 'Chrome',
+    browser_opera: 'Opera',
+    browser_yandex: 'Firefox',
+    browser_edge: 'MS Edge'
+}
+
+const devicesMap = {
+    device_telephone: 'Телефон',
+    device_computer: 'ПК'
+}
+
+const deviceButtons = [
+    {
+        text: 'Телефон',
+        callback_data: 'device_telephone',
+    },
+    {
+        text: 'ПК',
+        callback_data: 'device_computer',
+    }
+]
+
+const browserButtons = [
+    {
+        text: 'Yandex',
+        callback_data: 'browser_yandex',
+    },
+    {
+        text: 'Safari',
+        callback_data: 'browser_safari',
+    },
+    {
+        text: 'Chrome',
+        callback_data: 'browser_chrome',
+    },
+    {
+        text: 'Opera',
+        callback_data: 'browser_opera',
+    },
+    {
+        text: 'Firefox',
+        callback_data: 'browser_firefox',
+    },
+    {
+        text: 'MS Edge',
+        callback_data: 'browser_edge',
+    }
+]
 
 const productButtons = [
     {
@@ -111,23 +167,25 @@ const deadlineButtons = [
 
 bot.command("start", async (ctx) => {
     const currentHour = new Date().getHours();
-    let welcomeMessage;
+    let timeOfDay;
+    
+    const welcomeMessage = ' Я чатбот студии 42. Расскажите суть вашей проблемы, а мы покажем, как хорошо мы работаем. Укажите с каким продуктом у вас возникла проблема:';
 
     if (currentHour > 6 && currentHour <= 12){
-        welcomeMessage = 'Доброе утро. Я чатбот студии 42. Расскажите суть вашей проблемы, а мы покажем, как хорошо мы работаем. Укажите с каким продуктом у вас возникла проблема:';
+        timeOfDay = 'Доброе утро.';
     } else if (currentHour > 12 && currentHour <= 18){
-        welcomeMessage = 'Добрый день. Я чатбот студии 42. Расскажите суть вашей проблемы, а мы покажем, как хорошо мы работаем. Укажите с каким продуктом у вас возникла проблема:';
+        timeOfDay = 'Добрый день.';
     } else if (currentHour > 18 && currentHour <= 23) {
-        welcomeMessage = 'Добрый вечер. Я чатбот студии 42. Расскажите суть вашей проблемы, а мы покажем, как хорошо мы работаем. Укажите с каким продуктом у вас возникла проблема:';
+        timeOfDay = 'Добрый вечер.';
     } else {
-        welcomeMessage = 'Доброй ночи. Я чатбот студии 42. Расскажите суть вашей проблемы, а мы покажем, как хорошо мы работаем. Укажите с каким продуктом у вас возникла проблема:';
+        timeOfDay = 'Доброй ночи.';
     }
 
     const markup = {
         inline_keyboard: getChunks(topicButtons, BUTTONS_IN_LINE)
     };
 
-    bot.telegram.sendMessage(ctx.chat.id, welcomeMessage, {
+    bot.telegram.sendMessage(ctx.chat.id, timeOfDay + welcomeMessage, {
         reply_markup: markup,
     });
 });
@@ -145,7 +203,19 @@ const websiteTroubleScene = new WizardScene(
         const { url } = ctx.scene.state;
         const { topic } = ctx.session;
 
-        const managerMessage = `${topicMap[topic]}\n ${url}`;
+        let managerMessage = `Тема: ${topicMap[topic]}\n\nСсылка: ${url}`;
+        
+        if (ctx.session.companyName) {
+            managerMessage += `\n\nКомпания: ${ctx.session.companyName}`
+        }
+
+        if (ctx.session.device) {
+            managerMessage += `\n\nУстройство: ${devicesMap[ctx.session.device]}`
+        }
+
+        if (ctx.session.browser) {
+            managerMessage += `\n\nБраузер: ${browsersMap[ctx.session.browser]}`
+        }
 
         await bot.telegram.sendMessage(MANAGER_ID, managerMessage, {
             reply_markup: startKeyboard,
@@ -153,6 +223,7 @@ const websiteTroubleScene = new WizardScene(
 
         await bot.telegram.forwardMessage(MANAGER_ID, ctx.message.chat.id, messageId);
         await ctx.reply('Мы обязательно вам поможем в максимально короткие сроки.', startKeyboard);
+        ctx.session = {};
         return ctx.scene.leave();
     }
 );
@@ -176,16 +247,6 @@ mainScene.enter(async (ctx) => {
     await ctx.reply('Пожалуйста напишите от имени какой компании вы обращаетесь', exitKeyboard);
 });
 
-const topic2Scene = new WizardScene(
-    "topic2",
-    async (ctx) => {
-        return ctx.scene.leave();
-    }
-);
-topic2Scene.enter(async (ctx) =>{
-    await ctx.reply("topic2", exitKeyboard)
-});
-
 const topic3Scene = new WizardScene(
     "topic3",
     async (ctx) => {
@@ -199,6 +260,7 @@ const topic3Scene = new WizardScene(
         });
 
         await ctx.reply('Спасибо за обращение. Ваш запрос передан руководству, мы найдем подходящего эксперта по вашему вопросу. С вами свяжутся в течении 2-х рабочих часов. Рабочие дни пн-пт с 07:00 до 16:00 (МСК)', startKeyboard);
+        ctx.session = {};
         return ctx.scene.leave();
     }
 );
@@ -236,6 +298,7 @@ const topic5Scene = new WizardScene(
         });
 
         await ctx.reply('Мы обязательно вам поможем в максимально короткие сроки.', startKeyboard);
+        ctx.session = {};
         return ctx.scene.leave();
     }
 );
@@ -243,7 +306,26 @@ topic5Scene.enter(async (ctx) =>{
     await ctx.reply("Давайте представим, что я ваш личный психолог. Расскажите пожалуйста суть вашей жалобы.", exitKeyboard)
 });
 
-const stage = new Stage([websiteTroubleScene, mainScene, topic2Scene, topic3Scene, topic4Scene, topic5Scene]);
+const topic2SimulatorScene = new WizardScene(
+    "topic2Simulator",
+    async (ctx) => {
+        return ctx.scene.leave();
+    }
+);
+topic2SimulatorScene.enter(async (ctx) =>{
+    await ctx.reply("topic2Simulator", exitKeyboard)
+});
+
+const topic2MobileScene = new WizardScene(
+    "topic2Mobile",
+    async (ctx) => {
+        return ctx.scene.leave();
+    }
+);
+topic2MobileScene.enter(async (ctx) =>{
+    await ctx.reply("topic2Mobile", exitKeyboard)
+});
+const stage = new Stage([websiteTroubleScene, mainScene, topic2MobileScene, topic2SimulatorScene, topic3Scene, topic4Scene, topic5Scene]);
 stage.hears("/exit", (ctx) => {
     ctx.reply(`Начать заново?`, startKeyboard);
     ctx.scene.leave();
@@ -260,7 +342,21 @@ bot.on("callback_query", async (ctx) => {
         const { topic } = ctx.session;
 
         if (topic === 'topic_2') {
-            ctx.scene.enter('topic2');
+            if (data === 'product_1') {
+                ctx.scene.enter('topic2Mobile')
+            }
+
+            if (data === 'product_2') {
+                ctx.reply('Укажите ваш девайс: ', {
+                    reply_markup: {
+                        inline_keyboard: getChunks(deviceButtons, 1)
+                    }
+                });
+            }
+
+            if (data === 'product_3') {
+                ctx.scene.enter('topic2Simulator')
+            }
         }
 
         if (topic === 'topic_3') {
@@ -284,6 +380,20 @@ bot.on("callback_query", async (ctx) => {
         ctx.scene.enter('main');
     }
 
+    if (data.includes('device')) {
+        ctx.session.device = data;
+        ctx.reply('Укажите ваш браузер: ', {
+            reply_markup: {
+                inline_keyboard: getChunks(browserButtons, 1)
+            }
+        })
+    }
+
+    if (data.includes('browser')) {
+        ctx.session.browser = data;
+        ctx.scene.enter('websiteTrouble')
+    }
+
     if (data.includes('deadline')) {
         const {topic, companyName, product, task} = ctx.session;
         const managerMessage = `Тема: ${topicMap[topic]}\n\nКомпания: ${companyName}\n\nПлатформа: ${productMap[product]}\n\nЗадача: ${task}\n\nСроки: ${deadlinesMap[data]}`;
@@ -293,6 +403,7 @@ bot.on("callback_query", async (ctx) => {
         });
 
         await ctx.reply('Спасибо за обращение. Ваш запрос передан менеджеру, с вами свяжутся в максимально короткие сроки.', startKeyboard);
+        ctx.session = {};
     }
 });
 
