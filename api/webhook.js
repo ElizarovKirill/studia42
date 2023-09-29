@@ -22,6 +22,9 @@ const startKeyboard = Markup.keyboard(["/start"]).oneTime().resize();
 const BUTTONS_IN_LINE = 1;
 
 const MANAGER_ID = process.env.MANAGER_ID;
+const MANAGER_CHAT_ID = process.env.MANAGER_CHAT_ID;
+const MANAGER_ANNA_ID = process.env.MANAGER_ANNA_ID;
+const MANAGER_ALEXANDRA_ID = process.env.MANAGER_ALEXANDRA_ID;
 
 const productMap = {
     product_1: 'Мобильное приложение',
@@ -63,6 +66,105 @@ const devicesMap = {
     device_telephone: 'Телефон',
     device_computer: 'ПК'
 }
+
+const appMap = {
+    app_hxp: 'HXP',
+    app_quantum: 'Квант',
+    app_gpn: 'ГПН',
+    app_est: 'EstRC'
+}
+
+const simulatorMap = {
+    simulator_ptm: 'ПТМ',
+    simulator_opp: 'ОПП',
+    simulator_belaz: 'Белаз',
+    simulator_strop: 'Стропальщик'
+}
+
+const errorsMap = {
+    error_502: '502',
+    error_404: '404',
+    error_500: '500',
+    error_conection: 'Подключение к сайту не защищено',
+    error_access: 'Не удается получить доступ к сайту'
+}
+
+const issueLocationMap = {
+    issue_location_private: 'В личном кабинете в приложении',
+    issue_location_mobile: 'В самом приложении'
+}
+
+const issueLocationButtons = [
+    {
+        text: 'В личном кабинете в приложении',
+        callback_data: 'issue_location_private',
+    },
+    {
+        text: 'В самом приложении',
+        callback_data: 'issue_location_mobile',
+    }
+]
+
+const errorButtons = [
+    {
+        text: '502',
+        callback_data: 'error_502',
+    },
+    {
+        text: '404',
+        callback_data: 'error_404',
+    },
+    {
+        text: '500',
+        callback_data: 'error_500',
+    },
+    {
+        text: 'Подключение к сайту не защищено',
+        callback_data: 'error_conection',
+    },
+    {
+        text: 'Не удается получить доступ к сайту',
+        callback_data: 'error_access',
+    }
+]
+
+const simulatorButtons = [
+    {
+        text: 'ПТМ',
+        callback_data: 'simulator_ptm',
+    },
+    {
+        text: 'ОПП',
+        callback_data: 'simulator_opp',
+    },
+    {
+        text: 'Белаз',
+        callback_data: 'simulator_belaz',
+    },
+    {
+        text: 'Стропальщик',
+        callback_data: 'simulator_strop',
+    }
+]
+
+const appButtons = [
+    {
+        text: 'HXP',
+        callback_data: 'app_hxp',
+    },
+    {
+        text: 'Квант',
+        callback_data: 'app_quantum',
+    },
+    {
+        text: 'ГПН-ЭС',
+        callback_data: 'app_gpn',
+    },
+    {
+        text: 'EstRC',
+        callback_data: 'app_est',
+    }
+]
 
 const deviceButtons = [
     {
@@ -200,6 +302,8 @@ const websiteTroubleScene = new WizardScene(
     async (ctx) => {
         const messageId = ctx.message.message_id;
 
+        let managerId;
+
         const { url } = ctx.scene.state;
         const { topic } = ctx.session;
 
@@ -217,11 +321,21 @@ const websiteTroubleScene = new WizardScene(
             managerMessage += `\n\nБраузер: ${browsersMap[ctx.session.browser]}`
         }
 
-        await bot.telegram.sendMessage(MANAGER_ID, managerMessage, {
+        if (ctx.session.error) {
+            managerMessage += `\n\nОшибка: ${errorsMap[ctx.session.error]}`
+        }
+
+        if (ctx.session.root === 'topic2Site') {
+            managerId = MANAGER_CHAT_ID;
+        } else {
+            managerId = MANAGER_ANNA_ID;
+        }
+
+        await bot.telegram.sendMessage(managerId, managerMessage, {
             reply_markup: startKeyboard,
         });
 
-        await bot.telegram.forwardMessage(MANAGER_ID, ctx.message.chat.id, messageId);
+        await bot.telegram.forwardMessage(managerId, ctx.message.chat.id, messageId);
         await ctx.reply('Мы обязательно вам поможем в максимально короткие сроки.', startKeyboard);
         ctx.session = {};
         return ctx.scene.leave();
@@ -229,6 +343,58 @@ const websiteTroubleScene = new WizardScene(
 );
 websiteTroubleScene.enter(async (ctx) => {
     await ctx.reply("Пожалуйста укажите ссылку на продукт ", exitKeyboard)
+});
+
+const appSimulatorScene = new WizardScene(
+    "appSimulator",
+    async (ctx) => {
+        const messageId = ctx.message?.message_id;
+
+        let managerId;
+        
+        const { topic, companyName, root } = ctx.session;
+
+        let managerMessage = `Тема: ${topicMap[topic]}\n\nКомпания: ${companyName}`;
+
+        if (ctx.session.app) {
+            managerMessage += `\n\nПриложение: ${appMap[ctx.session.app]}`
+        }
+
+        if (ctx.session.simulator) {
+            managerMessage += `\n\nСимулятор: ${simulatorMap[ctx.session.simulator]}`
+        }
+
+        if (ctx.session.issue) {
+            managerMessage += `\n\nМесто где ошибка: ${issueLocationMap[ctx.session.issue]}`
+        }
+        
+        if (ctx.session.error) {
+            managerMessage += `\n\nОшибка: ${errorsMap[ctx.session.error]}`
+        }
+
+        if (root === 'topic2Simulator') {
+            managerId = MANAGER_ANNA_ID;
+        } else {
+            managerId = MANAGER_ALEXANDRA_ID;
+        }
+
+        await bot.telegram.sendMessage(managerId, managerMessage, {
+            reply_markup: startKeyboard,
+        });
+
+        if (messageId) {
+            await bot.telegram.forwardMessage(managerId, ctx.message.chat.id, messageId);
+        }
+        
+        await ctx.reply('Мы обязательно вам поможем в максимально короткие сроки.', startKeyboard);
+        ctx.session = {};
+        ctx.scene.leave();
+    }
+);
+appSimulatorScene.enter(async (ctx) => {
+    if (!ctx.session.error) {
+        await ctx.reply('Опишите вашу проблему (Укажите код ошибки, если есть). По возможности прикрепите скриншоты или видеозапись экрана.', exitKeyboard);
+    }
 });
 
 const mainScene = new WizardScene(
@@ -255,7 +421,7 @@ const topic3Scene = new WizardScene(
         const {topic, companyName, product} = ctx.session;
         const managerMessage = `Тема: ${topicMap[topic]}\n\nКомпания: ${companyName}\n\nПлатформа: ${productMap[product]}\n\nЗапрос: ${consultation}\n\nПользователь: ${ctx.message.from.username}`;
 
-        await bot.telegram.sendMessage(MANAGER_ID, managerMessage, {
+        await bot.telegram.sendMessage(MANAGER_ANNA_ID, managerMessage, {
             reply_markup: startKeyboard,
         });
 
@@ -293,7 +459,7 @@ const topic5Scene = new WizardScene(
         const {topic, companyName, product} = ctx.session;
         const managerMessage = `Тема: ${topicMap[topic]}\n\nКомпания: ${companyName}\n\nПлатформа: ${productMap[product]}\n\nЖалоба: ${complaint}`;
 
-        await bot.telegram.sendMessage(MANAGER_ID, managerMessage, {
+        await bot.telegram.sendMessage(MANAGER_ANNA_ID, managerMessage, {
             reply_markup: startKeyboard,
         });
 
@@ -325,9 +491,9 @@ const topic2MobileScene = new WizardScene(
 topic2MobileScene.enter(async (ctx) =>{
     await ctx.reply("topic2Mobile", exitKeyboard)
 });
-const stage = new Stage([websiteTroubleScene, mainScene, topic2MobileScene, topic2SimulatorScene, topic3Scene, topic4Scene, topic5Scene]);
-stage.hears("/exit", (ctx) => {
-    ctx.reply(`Начать заново?`, startKeyboard);
+const stage = new Stage([websiteTroubleScene, mainScene, topic2MobileScene, topic2SimulatorScene, topic3Scene, appSimulatorScene, topic4Scene, topic5Scene]);
+stage.hears("/exit", async (ctx) => {
+    await ctx.reply(`Начать заново?`, startKeyboard);
     ctx.scene.leave();
 });
 
@@ -343,11 +509,17 @@ bot.on("callback_query", async (ctx) => {
 
         if (topic === 'topic_2') {
             if (data === 'product_1') {
-                ctx.scene.enter('topic2Mobile')
+                ctx.session.root = 'topic2Mobile';
+                await ctx.reply('Укажите ваше приложение: ', {
+                    reply_markup: {
+                        inline_keyboard: getChunks(appButtons, 1)
+                    }
+                });
             }
 
             if (data === 'product_2') {
-                ctx.reply('Укажите ваш девайс: ', {
+                ctx.session.root = 'topic2Site';
+                await ctx.reply('Укажите ваш девайс: ', {
                     reply_markup: {
                         inline_keyboard: getChunks(deviceButtons, 1)
                     }
@@ -355,7 +527,12 @@ bot.on("callback_query", async (ctx) => {
             }
 
             if (data === 'product_3') {
-                ctx.scene.enter('topic2Simulator')
+                ctx.session.root = 'topic2Simulator';
+                await ctx.reply('Укажите ваш симулятор: ', {
+                    reply_markup: {
+                        inline_keyboard: getChunks(simulatorButtons, 1)
+                    }
+                });
             }
         }
 
@@ -382,7 +559,7 @@ bot.on("callback_query", async (ctx) => {
 
     if (data.includes('device')) {
         ctx.session.device = data;
-        ctx.reply('Укажите ваш браузер: ', {
+        await ctx.reply('Укажите ваш браузер: ', {
             reply_markup: {
                 inline_keyboard: getChunks(browserButtons, 1)
             }
@@ -391,14 +568,57 @@ bot.on("callback_query", async (ctx) => {
 
     if (data.includes('browser')) {
         ctx.session.browser = data;
-        ctx.scene.enter('websiteTrouble')
+        await ctx.reply('Укажиет код вашей ошибки: ', {
+            reply_markup: {
+                inline_keyboard: getChunks(errorButtons, 1)
+            }
+        })
+    }
+
+    if (data.includes('error')) {
+        ctx.session.error = data;
+        if (ctx.session.root === 'topic2Mobile') {
+            ctx.scene.enter('appSimulator')
+        } else {
+            ctx.scene.enter('websiteTrouble')
+        }
+    }
+
+    if (data.includes('app')) {
+        ctx.session.app = data;
+        await ctx.reply('Укажите где произошла ошибка', {
+            reply_markup: {
+                inline_keyboard: getChunks(issueLocationButtons, 1)
+            }
+        })
+    }
+
+    if (data.includes('issue')) {
+        ctx.session.issue = data;
+        
+        if (data === 'issue_location_private') {
+            await ctx.reply('Укажиет код вашей ошибки: ', {
+                reply_markup: {
+                    inline_keyboard: getChunks(errorButtons, 1)
+                }
+            })
+        }
+
+        if (data === 'issue_location_mobile') {
+            ctx.scene.enter('appSimulator')
+        }
+    }
+
+    if (data.includes('simulator')) {
+        ctx.session.simulator = data;
+        ctx.scene.enter('appSimulator')
     }
 
     if (data.includes('deadline')) {
         const {topic, companyName, product, task} = ctx.session;
         const managerMessage = `Тема: ${topicMap[topic]}\n\nКомпания: ${companyName}\n\nПлатформа: ${productMap[product]}\n\nЗадача: ${task}\n\nСроки: ${deadlinesMap[data]}`;
 
-        await bot.telegram.sendMessage(MANAGER_ID, managerMessage, {
+        await bot.telegram.sendMessage(MANAGER_ANNA_ID, managerMessage, {
             reply_markup: startKeyboard,
         });
 
