@@ -270,7 +270,7 @@ const deadlineButtons = [
 bot.command("start", async (ctx) => {
     const currentHour = new Date().getHours();
     let timeOfDay;
-    
+    console.log(currentHour);
     const welcomeMessage = ' Я чатбот студии 42. Расскажите суть вашей проблемы, а мы покажем, как хорошо мы работаем. Укажите с каким продуктом у вас возникла проблема:';
 
     if (currentHour > 6 && currentHour <= 12){
