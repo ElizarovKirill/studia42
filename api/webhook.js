@@ -268,9 +268,10 @@ const deadlineButtons = [
 ]
 
 bot.command("start", async (ctx) => {
-    const currentHour = new Date().getHours();
+    // 5 my timezone offset, can't find the way to get users timezone.
+    const currentHour = new Date().getHours() + 5;
     let timeOfDay;
-    console.log(currentHour);
+
     const welcomeMessage = ' Я чатбот студии 42. Расскажите суть вашей проблемы, а мы покажем, как хорошо мы работаем. Укажите с каким продуктом у вас возникла проблема:';
 
     if (currentHour > 6 && currentHour <= 12){
