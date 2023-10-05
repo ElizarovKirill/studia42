@@ -18,8 +18,11 @@ export const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const exitKeyboard = Markup.keyboard(["/exit"]).oneTime().resize();
 const startKeyboard = Markup.keyboard(["/start"]).oneTime().resize();
+const skipKeyboard = Markup.keyboard(["/skip", "/exit"]).oneTime().resize();
 
 const BUTTONS_IN_LINE = 1;
+
+let applicationNumber = 0;
 
 const MANAGER_ID = process.env.MANAGER_ID;
 const MANAGER_CHAT_ID = process.env.MANAGER_CHAT_ID;
@@ -268,27 +271,14 @@ const deadlineButtons = [
 ]
 
 bot.command("start", async (ctx) => {
-    // 5 my timezone offset, can't find the way to get users timezone.
-    const currentHour = new Date().getHours() + 5;
-    let timeOfDay;
 
-    const welcomeMessage = ' Я чатбот студии 42. Расскажите суть вашей проблемы, а мы покажем, как хорошо мы работаем. Укажите с каким продуктом у вас возникла проблема:';
-
-    if (currentHour > 6 && currentHour <= 12){
-        timeOfDay = 'Доброе утро.';
-    } else if (currentHour > 12 && currentHour <= 18){
-        timeOfDay = 'Добрый день.';
-    } else if (currentHour > 18 && currentHour <= 23) {
-        timeOfDay = 'Добрый вечер.';
-    } else {
-        timeOfDay = 'Доброй ночи.';
-    }
+    const welcomeMessage = ' Привет, я Миа! ЧатБот студии 42.\n\nРасскажите что у вас случилось.';
 
     const markup = {
         inline_keyboard: getChunks(topicButtons, BUTTONS_IN_LINE)
     };
 
-    bot.telegram.sendMessage(ctx.chat.id, timeOfDay + welcomeMessage, {
+    bot.telegram.sendMessage(ctx.chat.id, welcomeMessage, {
         reply_markup: markup,
     });
 });
@@ -301,6 +291,7 @@ const websiteTroubleScene = new WizardScene(
         return ctx.wizard.next();
     },
     async (ctx) => {
+        applicationNumber++;
         const messageId = ctx.message.message_id;
 
         let managerId;
@@ -308,7 +299,7 @@ const websiteTroubleScene = new WizardScene(
         const { url } = ctx.scene.state;
         const { topic } = ctx.session;
 
-        let managerMessage = `Тема: ${topicMap[topic]}\n\nСсылка: ${url}`;
+        let managerMessage = `Заявка №${applicationNumber}\n\nТема: ${topicMap[topic]}\n\nСсылка: ${url}`;
         
         if (ctx.session.companyName) {
             managerMessage += `\n\nКомпания: ${ctx.session.companyName}`
@@ -337,7 +328,7 @@ const websiteTroubleScene = new WizardScene(
         });
 
         await bot.telegram.forwardMessage(managerId, ctx.message.chat.id, messageId);
-        await ctx.reply('Мы обязательно вам поможем в максимально короткие сроки.', startKeyboard);
+        await ctx.reply(`Отлично! Ваше обращение №${applicationNumber}. В течение 3-4 часов поступит ответ.`, startKeyboard);
         ctx.session = {};
         return ctx.scene.leave();
     }
@@ -349,13 +340,14 @@ websiteTroubleScene.enter(async (ctx) => {
 const appSimulatorScene = new WizardScene(
     "appSimulator",
     async (ctx) => {
+        applicationNumber++;
         const messageId = ctx.message?.message_id;
 
         let managerId;
         
         const { topic, companyName, root } = ctx.session;
 
-        let managerMessage = `Тема: ${topicMap[topic]}\n\nКомпания: ${companyName}`;
+        let managerMessage = `Заявка №${applicationNumber}\n\nТема: ${topicMap[topic]}\n\nКомпания: ${companyName}`;
 
         if (ctx.session.app) {
             managerMessage += `\n\nПриложение: ${appMap[ctx.session.app]}`
@@ -387,7 +379,7 @@ const appSimulatorScene = new WizardScene(
             await bot.telegram.forwardMessage(managerId, ctx.message.chat.id, messageId);
         }
         
-        await ctx.reply('Мы обязательно вам поможем в максимально короткие сроки.', startKeyboard);
+        await ctx.reply(`Отлично! Ваше обращение №${applicationNumber}. В течение 3-4 часов поступит ответ.`, startKeyboard);
         ctx.session = {};
         ctx.scene.leave();
     }
@@ -417,16 +409,17 @@ mainScene.enter(async (ctx) => {
 const topic3Scene = new WizardScene(
     "topic3",
     async (ctx) => {
+        applicationNumber++;
         const consultation = ctx.message.text;
 
         const {topic, companyName, product} = ctx.session;
-        const managerMessage = `Тема: ${topicMap[topic]}\n\nКомпания: ${companyName}\n\nПлатформа: ${productMap[product]}\n\nЗапрос: ${consultation}\n\nПользователь: ${ctx.message.from.username}`;
+        const managerMessage = `Заявка №${applicationNumber}Тема: ${topicMap[topic]}\n\nКомпания: ${companyName}\n\nПлатформа: ${productMap[product]}\n\nЗапрос: ${consultation}\n\nПользователь: ${ctx.message.from.username}`;
 
         await bot.telegram.sendMessage(MANAGER_ANNA_ID, managerMessage, {
             reply_markup: startKeyboard,
         });
 
-        await ctx.reply('Спасибо за обращение. Ваш запрос передан руководству, мы найдем подходящего эксперта по вашему вопросу. С вами свяжутся в течении 2-х рабочих часов. Рабочие дни пн-пт с 07:00 до 16:00 (МСК)', startKeyboard);
+        await ctx.reply(`Спасибо за обращение. Ваша заявка №${applicationNumber} передан руководству, мы найдем подходящего эксперта по вашему вопросу. С вами свяжутся в течении 2-х рабочих часов. Рабочие дни пн-пт с 07:00 до 16:00 (МСК)`, startKeyboard);
         ctx.session = {};
         return ctx.scene.leave();
     }
@@ -439,6 +432,16 @@ const topic4Scene = new WizardScene(
     "topic4",
     async (ctx) => {
         ctx.session.task = ctx.message.text;
+
+        await ctx.reply('При возможности приведите референс или воспользуйтесь командой /skip', skipKeyboard)
+        return ctx.wizard.next();
+    },
+    async (ctx) => {
+        const message = ctx.message.text;
+
+        if (message !== '/skip') {
+            ctx.session.messageId = ctx.message.message_id;
+        }
 
         await ctx.reply('Укажите желаемые для вас сроки выполнения:', {
             reply_markup: {
@@ -457,20 +460,22 @@ const topic5Scene = new WizardScene(
     async (ctx) => {
         const complaint = ctx.message.text;
 
+        applicationNumber++;
+
         const {topic, companyName, product} = ctx.session;
-        const managerMessage = `Тема: ${topicMap[topic]}\n\nКомпания: ${companyName}\n\nПлатформа: ${productMap[product]}\n\nЖалоба: ${complaint}`;
+        const managerMessage = `Заявка №${applicationNumber}\n\nТема: ${topicMap[topic]}\n\nКомпания: ${companyName}\n\nПлатформа: ${productMap[product]}\n\nЖалоба: ${complaint}`;
 
         await bot.telegram.sendMessage(MANAGER_ANNA_ID, managerMessage, {
             reply_markup: startKeyboard,
         });
 
-        await ctx.reply('Мы обязательно вам поможем в максимально короткие сроки.', startKeyboard);
+        await ctx.reply(`Отлично! Ваша жалоба №${applicationNumber}. В течение 3-4 часов поступит ответ.`, startKeyboard);
         ctx.session = {};
         return ctx.scene.leave();
     }
 );
 topic5Scene.enter(async (ctx) =>{
-    await ctx.reply("Давайте представим, что я ваш личный психолог. Расскажите пожалуйста суть вашей жалобы.", exitKeyboard)
+    await ctx.reply("Расскажите пожалуйста суть вашей жалобы.", exitKeyboard)
 });
 
 const topic2SimulatorScene = new WizardScene(
@@ -615,15 +620,21 @@ bot.on("callback_query", async (ctx) => {
         ctx.scene.enter('appSimulator')
     }
 
+    //end of topic4
     if (data.includes('deadline')) {
-        const {topic, companyName, product, task} = ctx.session;
-        const managerMessage = `Тема: ${topicMap[topic]}\n\nКомпания: ${companyName}\n\nПлатформа: ${productMap[product]}\n\nЗадача: ${task}\n\nСроки: ${deadlinesMap[data]}`;
+        applicationNumber++;
+        const {topic, companyName, product, task, messageId} = ctx.session;
+        const managerMessage = `Заявка №${applicationNumber}\n\nТема: ${topicMap[topic]}\n\nКомпания: ${companyName}\n\nПлатформа: ${productMap[product]}\n\nЗадача: ${task}\n\nСроки: ${deadlinesMap[data]}`;
 
         await bot.telegram.sendMessage(MANAGER_ANNA_ID, managerMessage, {
             reply_markup: startKeyboard,
         });
+        console.log(messageId);
+        if (messageId) {
+            await bot.telegram.forwardMessage(MANAGER_ANNA_ID, ctx.update.callback_query.message.chat.id, messageId);
+        }
 
-        await ctx.reply('Спасибо за обращение. Ваш запрос передан менеджеру, с вами свяжутся в максимально короткие сроки.', startKeyboard);
+        await ctx.reply(`Отлично! Ваше обращение №${applicationNumber}. В течение 3-4 часов поступит ответ.`, startKeyboard);
         ctx.session = {};
     }
 });
