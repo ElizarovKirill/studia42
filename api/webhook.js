@@ -2,7 +2,7 @@ process.env.NTBA_FIX_319 = "test";
 import dotenv from "dotenv";
 import telegraf from "telegraf";
 import {
-    getChunks
+    getChunks, markChoice
 } from "../utils/helpers.js";
 
 dotenv.config();
@@ -511,6 +511,7 @@ bot.on("callback_query", async (ctx) => {
 
     if (data.includes('product')) {
         ctx.session.product = data;
+        markChoice(data, ctx);
         const { topic } = ctx.session;
 
         if (topic === 'topic_2') {
@@ -557,9 +558,11 @@ bot.on("callback_query", async (ctx) => {
 
     if (data == "topic_1") {
         ctx.session.topic = data;
+        markChoice(data, ctx);
         ctx.scene.enter('websiteTrouble')
     }else if (data.includes('topic')) {
         ctx.session.topic = data;
+        markChoice(data, ctx);
         ctx.scene.enter('main');
     }
 
@@ -574,6 +577,7 @@ bot.on("callback_query", async (ctx) => {
 
     if (data.includes('browser')) {
         ctx.session.browser = data;
+        markChoice(data, ctx);
         await ctx.reply('Укажиет код вашей ошибки: ', {
             reply_markup: {
                 inline_keyboard: getChunks(errorButtons, 1)
@@ -583,6 +587,7 @@ bot.on("callback_query", async (ctx) => {
 
     if (data.includes('error')) {
         ctx.session.error = data;
+        markChoice(data, ctx);
         if (ctx.session.root === 'topic2Mobile') {
             ctx.scene.enter('appSimulator')
         } else {
@@ -592,6 +597,7 @@ bot.on("callback_query", async (ctx) => {
 
     if (data.includes('app')) {
         ctx.session.app = data;
+        markChoice(data, ctx);
         await ctx.reply('Укажите где произошла ошибка', {
             reply_markup: {
                 inline_keyboard: getChunks(issueLocationButtons, 1)
@@ -601,6 +607,7 @@ bot.on("callback_query", async (ctx) => {
 
     if (data.includes('issue')) {
         ctx.session.issue = data;
+        markChoice(data, ctx);
         
         if (data === 'issue_location_private') {
             await ctx.reply('Укажиет код вашей ошибки: ', {
@@ -617,12 +624,14 @@ bot.on("callback_query", async (ctx) => {
 
     if (data.includes('simulator')) {
         ctx.session.simulator = data;
+        markChoice(data, ctx);
         ctx.scene.enter('appSimulator')
     }
 
     //end of topic4
     if (data.includes('deadline')) {
         applicationNumber++;
+        markChoice(data, ctx);
         const {topic, companyName, product, task, messageId} = ctx.session;
         const managerMessage = `Заявка №${applicationNumber}\n\nТема: ${topicMap[topic]}\n\nКомпания: ${companyName}\n\nПлатформа: ${productMap[product]}\n\nЗадача: ${task}\n\nСроки: ${deadlinesMap[data]}`;
 
