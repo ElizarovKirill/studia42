@@ -40,8 +40,8 @@ const managerMap = {
 }
 
 const topicMap = {
-    topic_1: 'Не работает сайт или приложение',
-    topic_2: 'Возникла проблема или ошибка в приложении',
+    topic_1: 'Не работает сайт/приложение',
+    topic_2: 'Ошибка/проблема в приложении',
     topic_3: 'Нужен совет/консультация',
     topic_4: 'Нужна оценка/расчет',
     topic_5: 'Хочу оставить жалобу'
@@ -334,7 +334,7 @@ const websiteTroubleScene = new WizardScene(
     }
 );
 websiteTroubleScene.enter(async (ctx) => {
-    await ctx.reply("Пожалуйста укажите ссылку на продукт ", exitKeyboard)
+    await ctx.reply("Укажите ссылку.", exitKeyboard)
 });
 
 const appSimulatorScene = new WizardScene(
@@ -403,7 +403,7 @@ const mainScene = new WizardScene(
     }
 );
 mainScene.enter(async (ctx) => {
-    await ctx.reply('Пожалуйста напишите от имени какой компании вы обращаетесь', exitKeyboard);
+    await ctx.reply('Укажите от имени какой компании вы обращаетесь', exitKeyboard);
 });
 
 const topic3Scene = new WizardScene(
@@ -475,7 +475,7 @@ const topic5Scene = new WizardScene(
     }
 );
 topic5Scene.enter(async (ctx) =>{
-    await ctx.reply("Расскажите пожалуйста суть вашей жалобы.", exitKeyboard)
+    await ctx.reply("Расскажите суть вашей жалобы.", exitKeyboard)
 });
 
 const topic2SimulatorScene = new WizardScene(
