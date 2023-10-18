@@ -61,7 +61,7 @@ const browsersMap = {
     browser_safari: 'Safari',
     browser_chrome: 'Chrome',
     browser_opera: 'Opera',
-    browser_yandex: 'Firefox',
+    browser_firefox: 'Firefox',
     browser_edge: 'MS Edge'
 }
 
@@ -89,7 +89,8 @@ const errorsMap = {
     error_404: '404',
     error_500: '500',
     error_conection: 'Подключение к сайту не защищено',
-    error_access: 'Не удается получить доступ к сайту'
+    error_access: 'Не удается получить доступ к сайту',
+    error_other: 'Другое'
 }
 
 const issueLocationMap = {
@@ -128,6 +129,10 @@ const errorButtons = [
     {
         text: 'Не удается получить доступ к сайту',
         callback_data: 'error_access',
+    },
+    {
+        text: 'Другое',
+        callback_data: 'error_other' 
     }
 ]
 
@@ -328,7 +333,7 @@ const websiteTroubleScene = new WizardScene(
         });
 
         await bot.telegram.forwardMessage(managerId, ctx.message.chat.id, messageId);
-        await ctx.reply(`Отлично! Ваше обращение №${applicationNumber}. В течение 3-4 часов поступит ответ.`, startKeyboard);
+        await ctx.reply(`Отлично! Ваше обращение №${applicationNumber} принято и мы уже вяли его в работу. В течение 2-х часов мы уже все решим или напишем о сроке устранения.`, startKeyboard);
         ctx.session = {};
         return ctx.scene.leave();
     }
@@ -497,7 +502,16 @@ const topic2MobileScene = new WizardScene(
 topic2MobileScene.enter(async (ctx) =>{
     await ctx.reply("topic2Mobile", exitKeyboard)
 });
-const stage = new Stage([websiteTroubleScene, mainScene, topic2MobileScene, topic2SimulatorScene, topic3Scene, appSimulatorScene, topic4Scene, topic5Scene]);
+const errorOtherScene = new WizardScene(
+    "errorOther",
+    async (ctx) => {
+        return ctx.scene.leave();
+    }
+);
+errorOtherScene.enter(async (ctx) =>{
+    await ctx.reply("Опишите проблему", exitKeyboard)
+});
+const stage = new Stage([websiteTroubleScene, mainScene, topic2MobileScene, topic2SimulatorScene, topic3Scene, appSimulatorScene, topic4Scene, topic5Scene, errorOtherScene]);
 stage.hears("/exit", async (ctx) => {
     await ctx.reply(`Начать заново?`, startKeyboard);
     ctx.scene.leave();
