@@ -322,6 +322,10 @@ const websiteTroubleScene = new WizardScene(
             managerMessage += `\n\nОшибка: ${errorsMap[ctx.session.error]}`
         }
 
+        if (ctx.session.problem) {
+            managerMessage += `\n\nОписание проблемы: ${ctx.session.problem}`
+        }
+
         if (ctx.session.root === 'topic2Site') {
             managerId = MANAGER_CHAT_ID;
         } else {
@@ -370,6 +374,10 @@ const appSimulatorScene = new WizardScene(
             managerMessage += `\n\nОшибка: ${errorsMap[ctx.session.error]}`
         }
 
+        if (ctx.session.problem) {
+            managerMessage += `\n\nОписание проблемы: ${ctx.session.problem}`
+        }
+
         if (root === 'topic2Simulator') {
             managerId = MANAGER_ANNA_ID;
         } else {
@@ -390,9 +398,7 @@ const appSimulatorScene = new WizardScene(
     }
 );
 appSimulatorScene.enter(async (ctx) => {
-    if (!ctx.session.error) {
-        await ctx.reply('Опишите вашу проблему (Укажите код ошибки, если есть). По возможности прикрепите скриншоты или видеозапись экрана.', exitKeyboard);
-    }
+        await ctx.reply('По возможности прикрепите скриншоты или видеозапись экрана.', exitKeyboard);
 });
 
 const mainScene = new WizardScene(
@@ -482,36 +488,21 @@ const topic5Scene = new WizardScene(
 topic5Scene.enter(async (ctx) =>{
     await ctx.reply("Расскажите суть вашей жалобы.", exitKeyboard)
 });
-
-const topic2SimulatorScene = new WizardScene(
-    "topic2Simulator",
-    async (ctx) => {
-        return ctx.scene.leave();
-    }
-);
-topic2SimulatorScene.enter(async (ctx) =>{
-    await ctx.reply("topic2Simulator", exitKeyboard)
-});
-
-const topic2MobileScene = new WizardScene(
-    "topic2Mobile",
-    async (ctx) => {
-        return ctx.scene.leave();
-    }
-);
-topic2MobileScene.enter(async (ctx) =>{
-    await ctx.reply("topic2Mobile", exitKeyboard)
-});
 const errorOtherScene = new WizardScene(
     "errorOther",
     async (ctx) => {
-        return ctx.scene.leave();
+        ctx.session.problem = ctx.message.text;
+        if (ctx.session.root === 'topic2Mobile') {
+            ctx.scene.enter('appSimulator')
+        } else {
+            ctx.scene.enter('websiteTrouble')
+        }
     }
 );
 errorOtherScene.enter(async (ctx) =>{
     await ctx.reply("Опишите проблему", exitKeyboard)
 });
-const stage = new Stage([websiteTroubleScene, mainScene, topic2MobileScene, topic2SimulatorScene, topic3Scene, appSimulatorScene, topic4Scene, topic5Scene, errorOtherScene]);
+const stage = new Stage([websiteTroubleScene, mainScene, topic3Scene, appSimulatorScene, topic4Scene, topic5Scene, errorOtherScene]);
 stage.hears("/exit", async (ctx) => {
     await ctx.reply(`Начать заново?`, startKeyboard);
     ctx.scene.leave();
@@ -600,12 +591,17 @@ bot.on("callback_query", async (ctx) => {
     }
 
     if (data.includes('error')) {
-        ctx.session.error = data;
-        markChoice(data, ctx);
-        if (ctx.session.root === 'topic2Mobile') {
-            ctx.scene.enter('appSimulator')
-        } else {
-            ctx.scene.enter('websiteTrouble')
+        if (data === 'error_other'){
+            ctx.scene.enter()
+        }else {
+            ctx.session.error = data;
+            markChoice(data, ctx);
+            console.log(ctx.session.root);
+            if (ctx.session.root === 'topic2Mobile') {
+                ctx.scene.enter('appSimulator')
+            } else {
+                ctx.scene.enter('websiteTrouble')
+            }
         }
     }
 
