@@ -277,7 +277,7 @@ const deadlineButtons = [
 
 bot.command("start", async (ctx) => {
 
-    const welcomeMessage = ' Привет, я Миа! ЧатБот студии 42.\n\nРасскажите что у вас случилось.';
+    const welcomeMessage = ' Привет! Я ЧатБот .\n\nРасскажите что у вас случилось.';
 
     const markup = {
         inline_keyboard: getChunks(topicButtons, BUTTONS_IN_LINE)
